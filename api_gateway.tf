@@ -3,6 +3,7 @@
 # ============================================================
 
 resource "aws_apigatewayv2_api" "api" {
+  provider      = aws.no_tags
   name          = "${var.app_name}-api"
   protocol_type = "HTTP"
 
@@ -11,13 +12,10 @@ resource "aws_apigatewayv2_api" "api" {
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["content-type"]
   }
-
-  tags = {
-    Name = "${var.app_name}-api-gateway"
-  }
 }
 
 resource "aws_apigatewayv2_stage" "prod" {
+  provider    = aws.no_tags
   api_id      = aws_apigatewayv2_api.api.id
   name        = "$default"
   auto_deploy = true
@@ -38,14 +36,16 @@ resource "aws_apigatewayv2_stage" "prod" {
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
-  api_id           = aws_apigatewayv2_api.api.id
-  integration_type = "AWS_PROXY"
+  provider           = aws.no_tags
+  api_id             = aws_apigatewayv2_api.api.id
+  integration_type   = "AWS_PROXY"
   integration_method = "POST"
-  integration_uri  = aws_lambda_function.api.invoke_arn
+  integration_uri    = aws_lambda_function.api.invoke_arn
   payload_format_version = "2.0"
 }
 
 resource "aws_apigatewayv2_route" "default" {
+  provider  = aws.no_tags
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"

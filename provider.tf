@@ -34,6 +34,13 @@ provider "aws" {
   }
 }
 
+# Separate provider without default_tags for API Gateway resources
+# API Gateway V2 requires apigateway:TagResource which is not a valid IAM action
+provider "aws" {
+  alias  = "no_tags"
+  region = var.aws_region
+}
+
 
 
 
