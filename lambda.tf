@@ -23,9 +23,6 @@ resource "aws_lambda_function" "api" {
     aws_iam_role_policy.lambda_dynamodb_policy
   ]
 
-  lifecycle {
-    ignore_changes = [image_uri]
-  }
 }
 
 resource "aws_lambda_function_url" "api" {
