@@ -1,0 +1,161 @@
+name: Update Lambda Function
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to update'
+        required: true
+        type: choice
+        default: 'dev'
+        options:
+          - dev
+          - staging
+          - production
+      image_uri:
+        description: 'ECR image URI from tab-saver-api (e.g., 366579856667.dkr.ecr.us-east-1.amazonaws.com/tab-saver-api:latest)'
+        required: true
+        type: string
+      image_tag:
+        description: 'Image tag for reference (e.g., latest, v1.0.0, commit-sha)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_VERSION: 1.6.0
+
+jobs:
+  update-lambda:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      
+      - name: Setup OpenTofu
+        run: |
+          wget https://github.com/opentofu/opentofu/releases/download/v${{ env.TF_VERSION }}/tofu_${{ env.TF_VERSION }}_linux_amd64.zip
+          unzip -o tofu_${{ env.TF_VERSION }}_linux_amd64.zip
+          sudo mv tofu /usr/local/bin/
+          tofu --version
+      
+      - name: OpenTofu Init
+        working-directory: .
+        run: |
+          tofu init \
+            -backend-config="bucket=tab-saver-infra-tfstate-${{ github.event.inputs.environment }}" \
+            -backend-config="key=environments/${{ github.event.inputs.environment }}/terraform.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="dynamodb_table=tab-saver-infra-tflock-${{ github.event.inputs.environment }}" \
+            -upgrade
+      
+      - name: OpenTofu Plan Lambda Update
+        working-directory: .
+        run: |
+          tofu plan \
+            -var="environment=${{ github.event.inputs.environment }}" \
+            -var="aws_region=us-east-1" \
+            -var="lambda_image_uri=${{ github.event.inputs.image_uri }}" \
+            -var="lambda_image_tag=${{ github.event.inputs.image_tag }}" \
+            -out=tfplan
+      
+      - name: OpenTofu Apply Lambda Update
+        working-directory: .
+        run: |
+          tofu apply -auto-approve tfplan
+      
+      - name: Wait for Lambda Update
+        run: |
+          FUNCTION_NAME=$(aws lambda list-functions --query "Functions[?contains(FunctionName, 'tab-saver-api')].FunctionName" --output text)
+          
+          if [ -z "$FUNCTION_NAME" ]; then
+            echo "Lambda function not found!"
+            exit 1
+          fi
+          
+          echo "Waiting for Lambda function update: $FUNCTION_NAME"
+          
+          # Wait for function to be updated
+          for i in {1..30}; do
+            STATUS=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.LastUpdateStatus' --output text)
+            
+            if [ "$STATUS" = "Successful" ]; then
+              echo "✅ Lambda function updated successfully!"
+              break
+            elif [ "$STATUS" = "Failed" ]; then
+              echo "❌ Lambda function update failed!"
+              exit 1
+            fi
+            
+            echo "Status: $STATUS (attempt $i/30)"
+            sleep 2
+          done
+      
+      - name: Verify Lambda Image
+        run: |
+          FUNCTION_NAME=$(aws lambda list-functions --query "Functions[?contains(FunctionName, 'tab-saver-api')].FunctionName" --output text)
+          
+          echo "## Lambda Function Updated ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Function Name:** $FUNCTION_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image URI:** ${{ github.event.inputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ github.event.inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Get actual image URI
+          ACTUAL_IMAGE=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Code.ImageUri' --output text)
+          echo "**Current Image URI:** $ACTUAL_IMAGE" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Run Smoke Tests
+        run: |
+          # Get API endpoint
+          API_ENDPOINT=$(aws apigatewayv2 get-apis --query "Items[?contains(Name, 'tab-saver-api')].ApiEndpoint" --output text)
+          
+          if [ -z "$API_ENDPOINT" ]; then
+            echo "API endpoint not found, skipping smoke tests"
+            exit 0
+          fi
+          
+          echo "Testing API endpoint: $API_ENDPOINT"
+          
+          # Test health endpoint
+          HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $API_ENDPOINT/api/health)
+          
+          if [ "$HEALTH_RESPONSE" = "200" ]; then
+            echo "✅ Health check passed!"
+          else
+            echo "❌ Health check failed with status: $HEALTH_RESPONSE"
+            exit 1
+          fi
+
+  notify:
+    needs: update-lambda
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify Success
+        if: needs.update-lambda.result == 'success'
+        run: |
+          echo "✅ Lambda function updated successfully!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Image: ${{ github.event.inputs.image_uri }}"
+      
+      - name: Notify Failure
+        if: needs.update-lambda.result == 'failure'
+        run: |
+          echo "❌ Lambda function update failed!"
+          exit 1
