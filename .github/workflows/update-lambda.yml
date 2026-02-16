@@ -70,18 +70,18 @@ jobs:
         run: |
           tofu apply -auto-approve tfplan
 
+      - name: Get Terraform Outputs
+        id: outputs
+        working-directory: .
+        run: |
+          echo "function_name=$(tofu output -raw lambda_function_name)" >> $GITHUB_OUTPUT
+          echo "api_url=$(tofu output -raw api_invoke_url)" >> $GITHUB_OUTPUT
+
       - name: Wait for Lambda Update
         run: |
-          FUNCTION_NAME=$(aws lambda list-functions --query "Functions[?contains(FunctionName, 'tab-saver')].FunctionName" --output text)
-
-          if [ -z "$FUNCTION_NAME" ]; then
-            echo "Lambda function not found!"
-            exit 1
-          fi
-
+          FUNCTION_NAME="${{ steps.outputs.outputs.function_name }}"
           echo "Waiting for Lambda function update: $FUNCTION_NAME"
 
-          # Wait for function to be updated
           for i in {1..30}; do
             STATUS=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Configuration.LastUpdateStatus' --output text)
 
@@ -99,7 +99,7 @@ jobs:
 
       - name: Verify Lambda Image
         run: |
-          FUNCTION_NAME=$(aws lambda list-functions --query "Functions[?contains(FunctionName, 'tab-saver')].FunctionName" --output text)
+          FUNCTION_NAME="${{ steps.outputs.outputs.function_name }}"
           ACTUAL_IMAGE=$(aws lambda get-function --function-name $FUNCTION_NAME --query 'Code.ImageUri' --output text)
 
           echo "## Lambda Function Updated ✅" >> $GITHUB_STEP_SUMMARY
@@ -112,8 +112,7 @@ jobs:
 
       - name: Run Smoke Tests
         run: |
-          # Get API endpoint
-          API_ENDPOINT=$(aws apigatewayv2 get-apis --query "Items[?contains(Name, 'tab-saver')].ApiEndpoint" --output text)
+          API_ENDPOINT="${{ steps.outputs.outputs.api_url }}"
 
           if [ -z "$API_ENDPOINT" ]; then
             echo "API endpoint not found, skipping smoke tests"
@@ -122,7 +121,6 @@ jobs:
 
           echo "Testing API endpoint: $API_ENDPOINT"
 
-          # Test health endpoint
           HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $API_ENDPOINT/api/health)
 
           if [ "$HEALTH_RESPONSE" = "200" ]; then
