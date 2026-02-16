@@ -10,7 +10,7 @@ resource "aws_lambda_function" "api" {
 
   # Use container image 
   package_type = "Image"
-  image_uri    = var.lambda_image_uri != "" ? var.lambda_image_uri : "public.ecr.aws/lambda/python:3.13"
+  image_uri    = var.lambda_image_uri
 
   environment {
     variables = {

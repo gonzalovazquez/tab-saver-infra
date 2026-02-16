@@ -21,6 +21,10 @@ on:
           - us-east-1
           - us-west-2
           - eu-central-1
+      lambda_image_uri:
+        description: 'ECR image URI (e.g., 366579856667.dkr.ecr.us-east-1.amazonaws.com/tab-saver-api:latest)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -122,6 +126,7 @@ jobs:
           tofu plan \
             -var="environment=${{ env.ENVIRONMENT }}" \
             -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="lambda_image_uri=${{ github.event.inputs.lambda_image_uri }}" \
             -out=tfplan
       
       - name: OpenTofu Apply
