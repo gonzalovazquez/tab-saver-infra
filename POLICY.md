@@ -84,8 +84,17 @@ The following policy is created with the following permissions:
                 "lambda:UpdateFunctionConfiguration",
                 "lambda:DeleteFunction",
                 "lambda:ListFunctions",
+                "lambda:ListVersionsByFunction",
+                "lambda:GetFunctionCodeSigningConfig",
                 "lambda:TagResource",
-                "lambda:UntagResource"
+                "lambda:UntagResource",
+                "lambda:AddPermission",
+                "lambda:RemovePermission",
+                "lambda:GetPolicy",
+                "lambda:CreateFunctionUrlConfig",
+                "lambda:GetFunctionUrlConfig",
+                "lambda:UpdateFunctionUrlConfig",
+                "lambda:DeleteFunctionUrlConfig"
             ],
             "Resource": "arn:aws:lambda:*:366579856667:function:tab-saver-*"
         },
