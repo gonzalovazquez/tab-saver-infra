@@ -56,13 +56,19 @@ jobs:
             -backend-config="dynamodb_table=tab-saver-infra-tflock-${{ github.event.inputs.environment }}" \
             -upgrade
 
+      - name: Trim inputs
+        id: inputs
+        run: |
+          TRIMMED_URI=$(echo "${{ github.event.inputs.lambda_image_uri }}" | xargs)
+          echo "lambda_image_uri=$TRIMMED_URI" >> $GITHUB_OUTPUT
+
       - name: OpenTofu Plan Lambda Update
         working-directory: .
         run: |
           tofu plan \
             -var="environment=${{ github.event.inputs.environment }}" \
             -var="aws_region=us-east-1" \
-            -var="lambda_image_uri=${{ github.event.inputs.lambda_image_uri }}" \
+            -var="lambda_image_uri=${{ steps.inputs.outputs.lambda_image_uri }}" \
             -out=tfplan
 
       - name: OpenTofu Apply Lambda Update
