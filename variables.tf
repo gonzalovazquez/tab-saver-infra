@@ -32,6 +32,13 @@ variable "lambda_timeout" {
   default     = 30
 }
 
+variable "lambda_image_uri" {
+  description = "Lambda function image URI (from ECR)"
+  type        = string
+  default     = ""
+}
+
+
 variable "dynamodb_billing_mode" {
   description = "DynamoDB billing mode (PAY_PER_REQUEST = free tier)"
   type        = string
