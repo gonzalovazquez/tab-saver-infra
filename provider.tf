@@ -12,14 +12,7 @@ terraform {
     }
   }
 
-  # Backend configuration - uncomment after initial setup
-  # backend "s3" {
-  #   bucket         = "tab-saver-terraform-state"
-  #   key            = "prod/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "tab-saver-terraform-locks"
-  #   encrypt        = true
-  # }
+  backend "s3" {}
 }
 
 locals {
