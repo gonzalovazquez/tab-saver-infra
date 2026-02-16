@@ -3,18 +3,20 @@
 # ============================================================
 
 resource "aws_lambda_function" "api" {
-  filename      = "lambda_function.zip"
-  function_name = "${var.app_name}-api"
+  function_name = "${var.app_name}-${var.environment}"
   role          = aws_iam_role.lambda_role.arn
-  handler       = "src.app.lambda_handler"
-  runtime       = "python3.13"
   timeout       = var.lambda_timeout
   memory_size   = var.lambda_memory_size
+
+  # Use container image 
+  package_type = "Image"
+  image_uri    = var.lambda_image_uri != "" ? var.lambda_image_uri : "public.ecr.aws/lambda/python:3.13"
 
   environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.tab_manager.name
       AWS_REGION     = var.aws_region
+      ENVIRONMENT    = var.environment
     }
   }
 
@@ -22,8 +24,8 @@ resource "aws_lambda_function" "api" {
     aws_iam_role_policy.lambda_dynamodb_policy
   ]
 
-  tags = {
-    Name = "${var.app_name}-api-function"
+  lifecycle {
+    ignore_changes = [image_uri]
   }
 }
 
