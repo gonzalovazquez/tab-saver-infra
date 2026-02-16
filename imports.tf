@@ -15,3 +15,8 @@ import {
   to = aws_iam_role.lambda_role
   id = "tab-saver-lambda-role"
 }
+
+import {
+  to = aws_lambda_function.api
+  id = "tab-saver-dev"
+}
