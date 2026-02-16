@@ -3,7 +3,6 @@
 # ============================================================
 
 resource "aws_apigatewayv2_api" "api" {
-  provider      = aws.no_tags
   name          = "${var.app_name}-api"
   protocol_type = "HTTP"
 
@@ -15,7 +14,6 @@ resource "aws_apigatewayv2_api" "api" {
 }
 
 resource "aws_apigatewayv2_stage" "prod" {
-  provider    = aws.no_tags
   api_id      = aws_apigatewayv2_api.api.id
   name        = "$default"
   auto_deploy = true
@@ -36,7 +34,6 @@ resource "aws_apigatewayv2_stage" "prod" {
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
-  provider           = aws.no_tags
   api_id             = aws_apigatewayv2_api.api.id
   integration_type   = "AWS_PROXY"
   integration_method = "POST"
@@ -45,7 +42,6 @@ resource "aws_apigatewayv2_integration" "lambda" {
 }
 
 resource "aws_apigatewayv2_route" "default" {
-  provider  = aws.no_tags
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
@@ -64,7 +60,7 @@ resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/${var.app_name}"
   retention_in_days = 7
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-api-logs"
-  }
+  })
 }

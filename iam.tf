@@ -18,9 +18,9 @@ resource "aws_iam_role" "lambda_role" {
     ]
   })
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-lambda-role"
-  }
+  })
 }
 
 # Lambda basic execution policy (CloudWatch logs)

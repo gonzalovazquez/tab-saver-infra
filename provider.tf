@@ -22,22 +22,15 @@ terraform {
   # }
 }
 
-provider "aws" {
-  region = var.aws_region
-
-  default_tags {
-    tags = {
-      Project     = "TabManager"
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-    }
+locals {
+  common_tags = {
+    Project     = "TabManager"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
-# Separate provider without default_tags for API Gateway resources
-# API Gateway V2 requires apigateway:TagResource which is not a valid IAM action
 provider "aws" {
-  alias  = "no_tags"
   region = var.aws_region
 }
 

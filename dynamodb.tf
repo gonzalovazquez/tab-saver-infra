@@ -49,7 +49,7 @@ resource "aws_dynamodb_table" "tab_manager" {
     enabled        = false
   }
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = "${var.app_name}-table"
-  }
+  })
 }
