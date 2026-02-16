@@ -35,10 +35,6 @@ resource "aws_apigatewayv2_stage" "prod" {
       responseLength = "$context.responseLength"
     })
   }
-
-  tags = {
-    Name = "${var.app_name}-prod-stage"
-  }
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
