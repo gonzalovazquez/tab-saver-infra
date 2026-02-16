@@ -136,7 +136,8 @@ The following policy is created with the following permissions:
                 "logs:PutRetentionPolicy",
                 "logs:TagLogGroup",
                 "logs:UntagLogGroup",
-                "logs:ListTagsLogGroup"
+                "logs:ListTagsLogGroup",
+                "logs:ListTagsForResource"
             ],
             "Resource": "arn:aws:logs:*:366579856667:log-group:*"
         },
